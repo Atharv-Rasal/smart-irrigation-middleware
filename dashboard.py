@@ -71,6 +71,7 @@ st.caption(f"API URL: {API_URL}")
 
 st.divider()
 
+
 # ==========================================
 # 6. LATEST SENSOR READINGS
 # ==========================================
@@ -79,22 +80,45 @@ st.subheader("Latest Sensor Readings")
 
 if isinstance(readings, dict):
 
-    col1, col2, col3, col4 = st.columns(4)
+    sensor_data = readings.get("latest_reading")
 
-    soil = readings.get("soilMoisture", "N/A")
-    temperature = readings.get("temperature", "N/A")
-    humidity = readings.get("humidity", "N/A")
-    rain = readings.get("rainProbability", "N/A")
+    if isinstance(sensor_data, dict):
 
-    col1.metric("Soil Moisture", f"{soil}%")
-    col2.metric("Temperature", f"{temperature} °C")
-    col3.metric("Humidity", f"{humidity}%")
-    col4.metric("Rain Probability", f"{rain}%")
+        col1, col2, col3, col4 = st.columns(4)
+
+        soil = sensor_data.get("soilMoisture")
+        temperature = sensor_data.get("temperature")
+        humidity = sensor_data.get("humidity")
+        rain = sensor_data.get("rainProbability")
+
+        col1.metric(
+            "Soil Moisture",
+            f"{soil}%" if soil is not None else "N/A"
+        )
+
+        col2.metric(
+            "Temperature",
+            f"{temperature} °C" if temperature is not None else "N/A"
+        )
+
+        col3.metric(
+            "Humidity",
+            f"{humidity}%" if humidity is not None else "N/A"
+        )
+
+        col4.metric(
+            "Rain Probability",
+            f"{rain}%" if rain is not None else "N/A"
+        )
+
+        with st.expander("View raw sensor data"):
+            st.json(sensor_data)
+
+    else:
+        st.warning("No sensor readings available yet.")
 
 else:
-    st.info("No sensor readings available yet.")
-
-st.divider()
+    st.error("Unable to retrieve sensor readings.")
 
 # ==========================================
 # 7. IRRIGATION DECISION
