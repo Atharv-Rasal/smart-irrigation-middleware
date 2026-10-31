@@ -111,21 +111,37 @@ def on_disconnect(client, userdata, disconnect_flags,
     print("MQTT disconnected:", reason_code)
 
 
+
 def on_message(client, userdata, msg):
     metrics["received"] += 1
 
+    print("\n========== MQTT MESSAGE RECEIVED ==========")
+    print("Topic:", msg.topic)
+
     try:
-        data = json.loads(msg.payload.decode("utf-8"))
+        payload = msg.payload.decode("utf-8")
+        print("Raw payload:", payload)
+
+        data = json.loads(payload)
 
         if not validate_message(data):
             metrics["invalid"] += 1
+            print("ERROR: Invalid sensor message")
+            print("============================================")
             return
 
-        message_id = (str(data["nodeId"]), int(data["sequence"]))
+        print("Sensor data validation successful!")
+
+        message_id = (
+            str(data["nodeId"]),
+            int(data["sequence"])
+        )
 
         with lock:
             if message_id in seen_messages:
                 metrics["duplicates"] += 1
+                print("Duplicate message detected:", message_id)
+                print("============================================")
                 return
 
             seen_messages.add(message_id)
@@ -141,13 +157,20 @@ def on_message(client, userdata, msg):
 
         try:
             message_queue.put_nowait(item)
+            print("Message added to processing queue")
+
         except queue.Full:
             metrics["dropped"] += 1
+            print("ERROR: Message queue is full")
 
         metrics["queue_depth"] = message_queue.qsize()
 
-    except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+        print("Current queue depth:", metrics["queue_depth"])
+        print("============================================")
+
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError) as error:
         metrics["invalid"] += 1
+        print("Message decoding error:", error)
 
 
 def worker():
@@ -161,6 +184,8 @@ def worker():
             latency = (time.time() - item["received_at"]) * 1000
 
             decision = make_decision(data)
+            print("Message processed successfully!")
+            print("Irrigation decision:", decision)
 
             with lock:
                 latest_reading = data
